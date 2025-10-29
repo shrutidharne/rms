@@ -1,0 +1,32 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: rms
+      POSTGRES_USER: rms
+      POSTGRES_PASSWORD: rms
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rms -d rms"]
+      interval: 5s
+      retries: 5
+  app:
+    build: ./app
+    environment:
+      DATABASE_URL: postgres://rms:rms@db:5432/rms
+      PORT: 3000
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./app:/usr/src/app
+volumes:
+  db_data:
+
