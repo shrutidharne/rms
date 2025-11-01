@@ -19,12 +19,25 @@ This project implements a Review Management System (RMS) for property reviews wi
 - Containerization: Docker & Docker Compose
 - Version Control: Git/GitHub
 
-## Prerequisites
+## Setup Options
+
+You can run this project in two ways:
+1. Using Docker (recommended, easier setup)
+2. Local setup without Docker (requires manual PostgreSQL installation)
+
+### Prerequisites
+
+#### For Docker Setup
 - Docker Desktop installed
 - Git installed
-- Node.js 18+ (for local development)
 
-## Quick Start (Docker)
+#### For Local Setup
+- Node.js 18+ installed
+- PostgreSQL 15+ installed
+- Git installed
+- psql command-line tool available on PATH
+
+## Option 1: Quick Start with Docker (Recommended)
 
 1. Ensure Docker Desktop is running
 2. From project root:
@@ -33,9 +46,90 @@ This project implements a Review Management System (RMS) for property reviews wi
 docker compose up --build
 ```
 
-App: `http://localhost:3000`  DB: `localhost:5432` (db=rms/rms, user=rms, pass=rms)
+The application will be available at:
+- API: `http://localhost:3000`
+- Database: `localhost:5432` (db=rms/rms, user=rms, pass=rms)
+- API Documentation: `http://localhost:3000/api-docs` (Interactive Swagger UI)
 
-API Documentation: `http://localhost:3000/api-docs` (Interactive Swagger UI)
+Verify everything is running:
+```bash
+# Check if containers are running
+docker compose ps
+
+# View logs if needed
+docker compose logs
+```
+
+To stop the application:
+```bash
+docker compose down
+```
+
+## Option 2: Local Setup (Without Docker)
+
+If you cannot use Docker, follow these steps to run the application locally:
+
+1. **Install Prerequisites**
+   - Node.js 18+ from https://nodejs.org/
+   - PostgreSQL 15+ from https://www.postgresql.org/download/
+   - Ensure `psql` is available in your terminal/command prompt
+
+2. **Set Up Database**
+   ```sql
+   -- Run in psql or pgAdmin
+   CREATE DATABASE rms;
+   CREATE USER rms WITH PASSWORD 'rms';
+   GRANT ALL PRIVILEGES ON DATABASE rms TO rms;
+   ```
+
+3. **Initialize Database Schema**
+   ```cmd
+   :: Windows CMD
+   psql -U rms -d rms -f sql\init.sql
+
+   # Linux/Mac
+   psql -U rms -d rms -f sql/init.sql
+   ```
+   If prompted for password, enter: `rms`
+
+4. **Install Dependencies and Start Application**
+   ```bash
+   # Go to app directory
+   cd app
+
+   # Install dependencies
+   npm install
+
+   # Set database connection (Windows CMD)
+   set DATABASE_URL=postgres://rms:rms@localhost:5432/rms
+
+   # Set database connection (Linux/Mac/PowerShell)
+   # export DATABASE_URL=postgres://rms:rms@localhost:5432/rms
+   # $env:DATABASE_URL = "postgres://rms:rms@localhost:5432/rms"
+
+   # Start the application
+   npm run dev
+   ```
+
+The application will be available at:
+- API: `http://localhost:3000`
+- API Documentation: `http://localhost:3000/api-docs`
+
+### Getting Started (Both Docker and Local Setup)
+
+1. **Get a Property ID**
+   ```bash
+   # With Docker:
+   docker compose exec db psql -U rms -d rms -c "SELECT id, name FROM properties;"
+
+   # Without Docker:
+   psql -U rms -d rms -c "SELECT id, name FROM properties;"
+   ```
+   Copy the UUID returned - you'll need it to create reviews.
+
+2. **Access API Documentation**
+   - Open `http://localhost:3000/api-docs` in your browser
+   - Use the interactive Swagger UI to test endpoints
 
 ## Endpoints
 
@@ -69,15 +163,48 @@ curl -X POST http://localhost:3000/api/reviews/<review_id>/publish
 curl http://localhost:3000/api/properties/<property_id>/top5
 ```
 
-## Development
+## Development and Testing
 
+### Running Tests
 ```bash
+# With Docker:
+docker compose exec app npm test
+
+# Without Docker:
+cd app
+npm test
+```
+
+### Development Mode
+```bash
+# With Docker - uses hot reload
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+# Without Docker
 cd app
 npm install
 npm run dev
 ```
 
-Set `DATABASE_URL` if not using Docker (default `postgres://rms:rms@localhost:5432/rms`).
+### Environment Variables
+- `DATABASE_URL`: Database connection string (default: `postgres://rms:rms@localhost:5432/rms`)
+- `PORT`: API server port (default: 3000)
+
+### Troubleshooting
+
+#### Docker Setup Issues
+- "Port already in use": Stop other services using port 3000 or change port in docker-compose.yml
+- Container won't start: Check `docker compose logs`
+- Database connection failed: Wait a few seconds for PostgreSQL to initialize
+
+#### Local Setup Issues
+- "psql: command not found": Add PostgreSQL bin directory to PATH
+- Database connection failed: Verify PostgreSQL is running and credentials are correct
+- Port 3000 in use: Set different port before starting app:
+  ```bash
+  set PORT=3001  # Windows
+  export PORT=3001  # Linux/Mac
+  ```
 
 ## Project Structure
 ```
