@@ -1,5 +1,4 @@
 # Review Management System (RMS)
-
 ## Assignment Overview
 This project implements a Review Management System (RMS) for property reviews with fraud detection and moderation capabilities. The system is built as a RESTful API service using Node.js (Express) and PostgreSQL.
 
@@ -249,7 +248,7 @@ rms/
 
 ```bash
 cd app
-npm test
+npm run dev
 ```
 
 ## API Documentation
@@ -304,62 +303,42 @@ npm test
 1. Concurrency on publish: use a transaction plus `UPDATE ... WHERE id=$1` and recompute top 5 in the same transaction; optionally `FOR UPDATE` lock on the property row to serialize updates. In PG, `SERIALIZABLE` or advisory locks can guarantee order if needed.
 If the company cannot use Docker, they can run the app locally against a local or managed PostgreSQL instance. Below are copy-pasteable steps for Windows (cmd) and a brief PowerShell/Linux variant.
 
-1) Install prerequisites
-- Node.js 18+
-- PostgreSQL 15+ (ensure `psql` is on PATH)
+### 1) How would you handle concurrent publishes (two moderators publishing same time)?
+The Core Problem: When two moderators try to save changes to the same review at the same time, a "last write wins" scenario can occur, silently overwriting the first moderator's work and causing data loss.
 
-2) Create database and user (run in `psql` or pgAdmin)
-```sql
-CREATE DATABASE rms;
-CREATE USER rms WITH PASSWORD 'rms';
-GRANT ALL PRIVILEGES ON DATABASE rms TO rms;
-```
+Here are three ways to remove this :
+1. Database Locks (Pessimistic Locking)
+How it works: The system places a temporary "lock" on a database record as soon as a moderator begins editing it. This lock prevents anyone else from modifying that same record until the first moderator saves their changes and releases the lock.
 
-3) Initialize schema (run from project root)
-```cmd
+Analogy: A "Check Out" system in a library. Only one person can take a specific book home at a time. Others must wait for it to be returned.
 
-Pros: Simple to understand; guarantees no conflicts.
+Pros: Prevents conflicts completely.
 
-If `psql` prompts for a password, enter `rms`.
+Cons: Can harm performance and create user frustration if locks are held for a long time. Poor choice for a web application where users might open a tab and then walk away.
 
-4) Run the app (Windows cmd)
-```cmd
-Cons: Can create bottlenecks and slow down the system (poor performance) if many moderators are waiting. If the first moderator forgets to finish, it can leave the record locked.
-2. Optimistic Concurrency Control (The Better Way)
-How it works: This method is more trusting. It allows everyone to edit freely but checks for conflicts at the moment of saving.
+2. Optimistic Concurrency Control
+How it works: This method is more permissive. It allows multiple moderators to edit the same data simultaneously. The conflict resolution happens only at the moment of saving.
 
-When a moderator fetches a review to edit, the system also sends a hidden version_number (e.g., version=5).
+When a moderator fetches a review to edit, the system also sends a hidden version_number 
 
+The moderator makes changes and clicks "Publish."
 
-PowerShell / Linux (bash) variant:
-```powershell
-The moderator makes their changes and hits "Publish."
+The system executes a conditional database command: "Update this review ONLY IF its current version is still 5."
 
-The system performs this check: "Update the review WHERE id=123 AND version_number=5."
+Success: If the update succeeds, the version number is incremented to 6.
 
-If it works: The update succeeds, and the version_number is incremented to 6.
-```bash
+Conflict: If it fails, it means another moderator has already saved their changes and updated the version to 6. The system then returns a clear error to the second moderator: "This review was modified by someone else after you opened it. Please refresh the page and re-apply your changes."
+Analogy: Editing a Google Doc. You can both type, but if your changes clash, you get a notification and can see the other person's edits to resolve the conflict manually.
+Pros: Excellent performance and a good user experience for most web applications. It doesn't block users.
+Cons: Requires the user to perform a manual step (refreshing and re-applying) if a conflict occurs.
+3. Message Queue (Kafka)
+How it works: Instead of saving directly to the database, every "publish" request is placed into an ordered line (a queue). A separate background process consumes these requests one by one, in the exact order they were received, and applies them to the database.
 
-If it fails: It means someone else (another moderator) already updated the review and changed the version number to 6. The system throws an error to the second moderator: "This review was modified by someone else after you opened it. Please refresh and apply your changes again."
+Analogy: A single-line queue for a rollercoaster. Riders (publish requests) line up and are loaded onto the ride (processed) one at a time, ensuring order and safety.
 
-Analogy: Editing a Wikipedia article. You get a warning if someone has saved an edit while you were writing yours.
+Pros: Guarantees order and prevents database overload by processing requests sequentially. Highly robust and scalable.
 
-Pros: Highly efficient for read-heavy applications (like a review site). No waiting.
-
-Notes:
-- Default server port: `3000`. If port 3000 is already in use, set `PORT` before starting (e.g., `set PORT=3001`).
-- The `sql/init.sql` script creates a demo property. To list properties and get a property id:
-```cmd
-
-Cons: Requires the user to retry their action if a conflict occurs.
-
-Use the returned UUID as `property_id` when creating reviews.
-
-3. Message Queue (Kafka/RabbitMQ)
-How it works: This approach decouples the action of "publishing" from the actual processing. Instead of updating the database directly, every "Publish" request is placed in an ordered line (a queue).
-
-A separate background process takes these requests one-by-one from the queue and applies them to the database
-
+Cons: Adds significant system complexity. The publish action is not instant, as the request must wait in line to be processed.
 ### 2) How would you extend this RMS to support Room-level or Dorm-level reviews?
 Currently, reviews are only for the property (e.g,“Boys Hostel A”). To support more detail, we can add “Dorm” and “Room” levels inside each property so students can review a specific dorm or room instead of the whole property.
 
