@@ -1,4 +1,4 @@
-version: '3.8'
+
 services:
   db:
     image: postgres:15
@@ -27,6 +27,8 @@ services:
       - "3000:3000"
     volumes:
       - ./app:/usr/src/app
+      - app_node_modules:/usr/src/app/node_modules
 volumes:
   db_data:
+  app_node_modules:
 

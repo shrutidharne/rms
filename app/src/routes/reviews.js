@@ -2,6 +2,59 @@ import express from 'express';
 import { pool, withTransaction, updateTop5Reviews } from '../db.js';
 import { z } from 'zod';
 
+/**
+ * @swagger
+ * tags:
+ *   name: Reviews
+ *   description: Review management endpoints
+ */
+
+/**
+ * @swagger
+ * /api/reviews:
+ *   post:
+ *     summary: Create a new review
+ *     tags: [Reviews]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Review'
+ *     responses:
+ *       201:
+ *         description: Review created and published
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   enum: [published]
+ *                 review:
+ *                   $ref: '#/components/schemas/Review'
+ *       200:
+ *         description: Review held for moderation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: held for moderation
+ *                 status:
+ *                   type: string
+ *                   enum: [pending]
+ *       400:
+ *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 const router = express.Router();
 
 const reviewSchema = z.object({
@@ -55,6 +108,42 @@ router.post('/', async (req, res, next) => {
 	}
 });
 
+/**
+ * @swagger
+ * /api/reviews/{id}/publish:
+ *   post:
+ *     summary: Publish a pending review
+ *     tags: [Reviews]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Review ID
+ *     responses:
+ *       200:
+ *         description: Review published successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 property_id:
+ *                   type: string
+ *                   format: uuid
+ *                 top_5_reviews:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Review'
+ *       404:
+ *         description: Review not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post('/:id/publish', async (req, res, next) => {
 	try {
 		const reviewId = req.params.id;

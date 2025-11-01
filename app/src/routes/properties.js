@@ -1,6 +1,52 @@
 import express from 'express';
 import { pool } from '../db.js';
 
+/**
+ * @swagger
+ * tags:
+ *   name: Properties
+ *   description: Property management endpoints
+ */
+
+/**
+ * @swagger
+ * /api/properties/{id}/top5:
+ *   get:
+ *     summary: Get top 5 reviews for a property
+ *     tags: [Properties]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Property ID
+ *     responses:
+ *       200:
+ *         description: Property's top 5 reviews retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 property_id:
+ *                   type: string
+ *                   format: uuid
+ *                 name:
+ *                   type: string
+ *                 top_5_reviews:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Review'
+ *       404:
+ *         description: Property not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 const router = express.Router();
 
 router.get('/:id/top5', async (req, res, next) => {

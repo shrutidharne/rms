@@ -1,0 +1,47 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: rms
+          POSTGRES_USER: rms
+          POSTGRES_PASSWORD: rms
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      working-directory: ./app
+      run: npm install
+      
+    - name: Initialize database
+      run: psql postgresql://rms:rms@localhost:5432/rms -f sql/init.sql
+      
+    - name: Run tests
+      working-directory: ./app
+      run: npm test
+      env:
+        DATABASE_URL: postgres://rms:rms@localhost:5432/rms
