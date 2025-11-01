@@ -328,9 +328,13 @@ The system executes a conditional database command: "Update this review ONLY IF 
 Success: If the update succeeds, the version number is incremented to 6.
 
 Conflict: If it fails, it means another moderator has already saved their changes and updated the version to 6. The system then returns a clear error to the second moderator: "This review was modified by someone else after you opened it. Please refresh the page and re-apply your changes."
+
 Analogy: Editing a Google Doc. You can both type, but if your changes clash, you get a notification and can see the other person's edits to resolve the conflict manually.
+
 Pros: Excellent performance and a good user experience for most web applications. It doesn't block users.
-Cons: Requires the user to perform a manual step (refreshing and re-applying) if a conflict occurs.
+
+Cons: Requires the user to perform a manual step if a conflict occurs.
+
 3. Message Queue (Kafka)
 How it works: Instead of saving directly to the database, every "publish" request is placed into an ordered line (a queue). A separate background process consumes these requests one by one, in the exact order they were received, and applies them to the database.
 
@@ -339,6 +343,7 @@ Analogy: A single-line queue for a rollercoaster. Riders (publish requests) line
 Pros: Guarantees order and prevents database overload by processing requests sequentially. Highly robust and scalable.
 
 Cons: Adds significant system complexity. The publish action is not instant, as the request must wait in line to be processed.
+
 ### 2) How would you extend this RMS to support Room-level or Dorm-level reviews?
 Currently, reviews are only for the property (e.g,“Boys Hostel A”). To support more detail, we can add “Dorm” and “Room” levels inside each property so students can review a specific dorm or room instead of the whole property.
 
@@ -360,7 +365,7 @@ The system then sends the review_type and parent_id to the backend to save corre
 ### 3) How would you prevent fake reviews at scale?
 Just like social media platforms stop fake accounts, we will prevent fake reviews using verification and detection measures.
 
-Technical approach (concise)
+Technical approach
 
 User verification: Require students to sign up with a verified institutional email address (e.g., .edu.in).
 
